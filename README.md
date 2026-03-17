@@ -6,6 +6,22 @@ Built as a portfolio project inspired by [Noah](https://www.hollanoah.com/) and 
 
 ---
 
+## Live demo
+
+**API endpoint (live on AWS):**
+
+```
+POST https://65o4g3sfo5.execute-api.us-east-1.amazonaws.com/prod/analyze
+```
+
+**Try it now (Windows PowerShell):**
+
+```powershell
+Invoke-WebRequest -Uri "https://65o4g3sfo5.execute-api.us-east-1.amazonaws.com/prod/analyze" -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"prompt": "Summarize the Q3 financial report for the board."}' -UseBasicParsing | Select-Object -ExpandProperty Content
+```
+
+---
+
 ## What it does
 
 Send any LLM prompt to the `/analyze` endpoint and get back a JSON health report:
@@ -13,32 +29,33 @@ Send any LLM prompt to the `/analyze` endpoint and get back a JSON health report
 ```json
 {
   "status": "success",
-  "prompt_length": 98,
+  "prompt_length": 82,
+  "model_used": "amazon.nova-lite-v1:0",
   "analysis": {
     "pii_risk": {
-      "score": 85,
+      "score": 100,
       "level": "high",
-      "findings": ["Full name detected", "Email address detected", "SSN pattern detected"]
+      "findings": ["email address", "SSN", "credit card"]
     },
     "token_cost": {
-      "estimated_tokens": 24,
-      "cost_tier": "cheap",
-      "note": "Short prompt, minimal token usage."
+      "estimated_tokens": 32,
+      "cost_tier": "moderate",
+      "note": "The prompt is moderately long."
     },
     "drift_potential": {
-      "score": 20,
+      "score": 10,
       "level": "low",
-      "reason": "Prompt is specific and well-constrained with a clear task."
+      "reason": "The prompt is very specific."
     },
     "tone": {
-      "label": "professional",
+      "label": "neutral",
       "confidence": 90,
-      "note": "Clear, formal business language."
+      "note": "The prompt is factual and neutral."
     },
     "overall_health": {
-      "score": 42,
+      "score": 10,
       "grade": "F",
-      "summary": "Prompt contains highly sensitive PII including SSN and email. Remove all personal identifiers before sending to any LLM."
+      "summary": "The prompt contains highly sensitive PII and is unsafe. Avoid using such prompts."
     }
   }
 }
@@ -49,13 +66,13 @@ Send any LLM prompt to the `/analyze` endpoint and get back a JSON health report
 ## Architecture
 
 ```
-Client → API Gateway (POST /analyze) → Lambda (Python 3.11) → Bedrock (Claude 3 Haiku) → JSON response
+Client → API Gateway (POST /analyze) → Lambda (Python 3.12) → Bedrock (Amazon Nova Lite) → JSON response
 ```
 
 **AWS services used:**
 - **AWS Lambda** — serverless function, runs the analysis logic
-- **Amazon API Gateway** — exposes the HTTP endpoint
-- **Amazon Bedrock (Claude 3 Haiku)** — the AI model that performs the analysis
+- **Amazon API Gateway** — exposes the HTTPS endpoint
+- **Amazon Bedrock (Nova Lite)** — the AI model that performs the analysis
 - **Amazon CloudWatch** — automatic logging of every invocation
 - **AWS SAM** — infrastructure-as-code deployment
 
@@ -81,8 +98,7 @@ prompt-health-checker/
 ### Prerequisites
 - AWS account with CLI configured (`aws configure`)
 - AWS SAM CLI installed
-- Python 3.11+
-- Bedrock access in us-east-1 (automatic on new accounts)
+- Python 3.12+
 
 ### Deploy
 
@@ -103,25 +119,14 @@ sam deploy --guided
 
 After deploy, SAM prints your live API URL. Copy the `AnalyzeEndpoint` value.
 
-### Test it
+### Test it (Windows PowerShell)
 
-```bash
-# Test with a clean prompt
-curl -X POST https://YOUR_API_URL/prod/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Summarize the Q3 financial report for the board."}'
+```powershell
+# Clean prompt - should score Grade A
+Invoke-WebRequest -Uri "https://YOUR_API_URL/analyze" -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"prompt": "Summarize the Q3 financial report for the board."}' -UseBasicParsing | Select-Object -ExpandProperty Content
 
-# Test with PII - watch the pii_risk score go high
-curl -X POST https://YOUR_API_URL/prod/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Email john.smith@gmail.com his SSN 123-45-6789 and credit card 4111-1111-1111-1111"}'
-```
-
-### Run local tests
-
-```bash
-cd tests
-python test_handler.py
+# PII prompt - watch pii_risk score hit 100
+Invoke-WebRequest -Uri "https://YOUR_API_URL/analyze" -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"prompt": "Email john.smith@gmail.com his SSN 123-45-6789 and credit card 4111-1111-1111-1111"}' -UseBasicParsing | Select-Object -ExpandProperty Content
 ```
 
 ---
@@ -141,14 +146,14 @@ python test_handler.py
 ## Cost
 
 This project runs almost entirely on AWS Free Tier:
-- **Lambda**: 1M free requests/month
-- **API Gateway**: 1M free calls/month (first 12 months)
-- **Bedrock Claude 3 Haiku**: ~$0.00005 per call — 1,000 test calls ≈ $0.05
+- **Lambda** — 1M free requests/month
+- **API Gateway** — 1M free calls/month (first 12 months)
+- **Bedrock Nova Lite** — ~$0.000060 per 1,000 input tokens — 1,000 test calls ≈ $0.01
 
 ---
 
 ## Why I built this
 
-Noah and Cortif AI both solve the problem of keeping AI systems safe and observable in production. This project is a minimal but functional version of their core feature — analyzing what goes *into* an LLM before it causes problems downstream.
+Noah and Cortif AI both solve the problem of keeping AI systems safe and observable in production. This project is a minimal but functional version of their core feature — analyzing what goes into an LLM before it causes problems downstream.
 
 The same pattern (intercept → analyze → score → alert) is what powers real AI monitoring platforms used by banks, hospitals, and enterprise AI teams.
