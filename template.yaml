@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: >
+  AI Prompt Health Checker
+  Analyzes any LLM prompt for PII risk, token cost, drift potential, and tone.
+  Built with AWS Lambda, API Gateway, and Amazon Bedrock (Claude 3 Haiku).
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: python3.12
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+
+Resources:
+
+  PromptHealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: prompt-health-checker
+      CodeUri: src/
+      Handler: handler.lambda_handler
+      Description: Analyzes LLM prompts for health issues using Amazon Bedrock
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource:
+                - !Sub "arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-text-lite-v1"
+      Events:
+        AnalyzePost:
+          Type: Api
+          Properties:
+            Path: /analyze
+            Method: post
+            RestApiId: !Ref PromptHealthApi
+        HealthGet:
+          Type: Api
+          Properties:
+            Path: /health
+            Method: get
+            RestApiId: !Ref PromptHealthApi
+
+  PromptHealthApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: prompt-health-checker-api
+      StageName: prod
+      Cors:
+        AllowMethods: "'POST, GET, OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+        AllowOrigin: "'*'"
+
+Outputs:
+  ApiUrl:
+    Description: "Live API endpoint - use this to test your project"
+    Value: !Sub "https://${PromptHealthApi}.execute-api.us-east-1.amazonaws.com/prod"
+
+  AnalyzeEndpoint:
+    Description: "POST your prompts to this URL"
+    Value: !Sub "https://${PromptHealthApi}.execute-api.us-east-1.amazonaws.com/prod/analyze"
+
+  LambdaFunction:
+    Description: "Lambda function name"
+    Value: !Ref PromptHealthFunction
+
+  LambdaArn:
+    Description: "Lambda function ARN"
+    Value: !GetAtt PromptHealthFunction.Arn
