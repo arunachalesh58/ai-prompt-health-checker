@@ -2,7 +2,7 @@
 
 A serverless API that analyzes any LLM prompt for safety and quality issues — returning a structured health report with scores for PII risk, token cost, drift potential, and tone.
 
-Built as a portfolio project inspired by [Noah](https://www.hollanoah.com/) and [Cortif AI](https://cortif.ai/) — real AI monitoring platforms that detect exactly these kinds of issues in production AI systems.
+
 
 ---
 
@@ -154,6 +154,6 @@ This project runs almost entirely on AWS Free Tier:
 
 ## Why I built this
 
-Noah and Cortif AI both solve the problem of keeping AI systems safe and observable in production. This project is a minimal but functional version of their core feature — analyzing what goes into an LLM before it causes problems downstream.
+This project is a minimal but functional version of their core feature — analyzing what goes into an LLM before it causes problems downstream.
 
 The same pattern (intercept → analyze → score → alert) is what powers real AI monitoring platforms used by banks, hospitals, and enterprise AI teams.
