@@ -1,4 +1,5 @@
 import json
+from tracemalloc import start
 import boto3
 import re
 import logging
@@ -75,14 +76,20 @@ def analyze_prompt(prompt_text: str) -> dict:
     raw_text = response_body["output"]["message"]["content"][0]["text"].strip()
 
     raw_text = re.sub(r"^```json\s*", "", raw_text)
+    raw_text = re.sub(r"^```\s*", "", raw_text)
     raw_text = re.sub(r"\s*```$", "", raw_text)
+    raw_text = raw_text.strip()
 
     start = raw_text.find("{")
     end = raw_text.rfind("}") + 1
     if start != -1 and end > start:
         raw_text = raw_text[start:end]
 
-    return json.loads(raw_text)
+    try:
+        return json.loads(raw_text)
+    except json.JSONDecodeError:
+        raw_text = raw_text.encode('utf-8').decode('unicode_escape') if '\\u' in raw_text else raw_text
+        return json.loads(raw_text)
 
 
 def build_response(status_code: int, body: dict) -> dict:
