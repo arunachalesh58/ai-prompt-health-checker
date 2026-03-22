@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Prompt Health — AI Prompt Safety Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f0f5;
+    --muted: #7a7a8a;
+    --accent: #6c63ff;
+    --accent2: #a78bfa;
+    --green: #22c55e;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --mono: 'DM Mono', monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'DM Sans', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow orb */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(108,99,255,0.12) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(10,10,15,0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+  .nav-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .nav-logo {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .nav-logo .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .nav-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    background: var(--surface);
+  }
+
+  /* HERO */
+  .hero {
+    padding: 140px 0 60px;
+    text-align: center;
+  }
+  .hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent2);
+    border: 1px solid rgba(108,99,255,0.3);
+    background: rgba(108,99,255,0.08);
+    padding: 5px 12px;
+    border-radius: 20px;
+    margin-bottom: 24px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .hero-tag::before { content: '●'; font-size: 8px; }
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(38px, 6vw, 62px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #fff 0%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    font-size: 17px;
+    color: var(--muted);
+    max-width: 500px;
+    margin: 0 auto 40px;
+    font-weight: 300;
+    line-height: 1.7;
+  }
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-bottom: 56px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat-num {
+    font-family: var(--display);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+    margin-top: 2px;
+  }
+
+  /* ANALYZER */
+  .analyzer {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 80px;
+    box-shadow: 0 0 60px rgba(108,99,255,0.08);
+  }
+  .analyzer-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+  }
+  .dot-red { width:10px;height:10px;border-radius:50%;background:#ff5f57; }
+  .dot-yellow { width:10px;height:10px;border-radius:50%;background:#febc2e; }
+  .dot-green-dot { width:10px;height:10px;border-radius:50%;background:#28c840; }
+  .analyzer-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 6px;
+  }
+  .analyzer-body { padding: 24px; }
+
+  .input-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+  textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 14px 16px;
+    resize: vertical;
+    min-height: 120px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-weight: 300;
+  }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted); }
+
+  .quick-tests {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 12px 0 20px;
+  }
+  .quick-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .quick-btn:hover { border-color: var(--accent); color: var(--accent2); background: rgba(108,99,255,0.06); }
+
+  .analyze-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .analyze-btn:hover { background: #5a52e0; transform: translateY(-1px); }
+  .analyze-btn:active { transform: translateY(0); }
+  .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .analyze-btn .spinner {
+    display: none;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto;
+  }
+  .analyze-btn.loading .btn-text { display: none; }
+  .analyze-btn.loading .spinner { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ERROR */
+  .error-box {
+    display: none;
+    margin-top: 20px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: #fca5a5;
+    font-size: 13px;
+    font-family: var(--mono);
+  }
+  .error-box.show { display: block; }
+
+  /* RESULTS */
+  .results {
+    display: none;
+    margin-top: 28px;
+    animation: fadeUp 0.4s ease;
+  }
+  .results.show { display: block; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+  .results-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .overall-grade {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .grade-circle {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 800;
+    border: 2px solid;
+    flex-shrink: 0;
+  }
+  .grade-info .label { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .grade-info .score { font-family: var(--display); font-size: 20px; font-weight: 700; }
+  .model-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: var(--surface2);
+  }
+
+  .scores-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  @media(max-width:520px){ .scores-grid { grid-template-columns: 1fr; } }
+
+  .score-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .score-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .score-card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+  }
+  .score-card-value {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .score-bar-bg {
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+  .score-detail {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .findings-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .finding-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(239,68,68,0.15);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: #fca5a5;
+  }
+
+  .summary-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .summary-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .summary-text {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  /* HOW IT WORKS */
+  .section { padding: 60px 0; }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent2);
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: var(--display);
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 40px;
+  }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  .step-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .step-card:hover { border-color: var(--border2); }
+  .step-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent2);
+    margin-bottom: 10px;
+  }
+  .step-title {
+    font-family: var(--display);
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .step-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    font-weight: 300;
+  }
+
+  /* SCORES LEGEND */
+  .scores-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .legend-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .legend-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .legend-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.4;
+    font-weight: 300;
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 0;
+    text-align: center;
+  }
+  .footer-text {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+  .footer-text a {
+    color: var(--accent2);
+    text-decoration: none;
+  }
+  .footer-text a:hover { text-decoration: underline; }
+  .footer-stack {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  .stack-pill {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <span class="dot"></span>
+      PromptHealth
+    </div>
+    <div class="nav-badge">AWS Bedrock · Nova Lite</div>
+  </div>
+</nav>
+
+<main>
+  <div class="container">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-tag">AI Safety Tool</div>
+      <h1>Analyze your prompt<br/>before it causes damage</h1>
+      <p class="hero-sub">Scan any LLM prompt for PII leaks, token cost, drift risk, and tone — in under 2 seconds.</p>
+      <div class="hero-stats">
+        <div class="stat"><div class="stat-num">4</div><div class="stat-label">health scores</div></div>
+        <div class="stat"><div class="stat-num">&lt;2s</div><div class="stat-label">response time</div></div>
+        <div class="stat"><div class="stat-num">A–F</div><div class="stat-label">safety grade</div></div>
+        <div class="stat"><div class="stat-num">$0</div><div class="stat-label">monthly cost</div></div>
+      </div>
+    </div>
+
+    <!-- ANALYZER -->
+    <div class="analyzer">
+      <div class="analyzer-header">
+        <div class="dot-red"></div>
+        <div class="dot-yellow"></div>
+        <div class="dot-green-dot"></div>
+        <span class="analyzer-title">prompt-analyzer.js</span>
+      </div>
+      <div class="analyzer-body">
+        <div class="input-label">Enter your prompt</div>
+        <textarea id="promptInput" placeholder="Type or paste any LLM prompt here — try one with a name and email address to see PII detection in action..."></textarea>
+
+        <div class="quick-tests">
+          <span style="font-size:11px;color:var(--muted);font-family:var(--mono);align-self:center">Try:</span>
+          <button class="quick-btn" onclick="setPrompt('clean')">Clean prompt</button>
+          <button class="quick-btn" onclick="setPrompt('pii')">PII prompt</button>
+          <button class="quick-btn" onclick="setPrompt('vague')">Vague prompt</button>
+          <button class="quick-btn" onclick="setPrompt('aggressive')">Aggressive tone</button>
+        </div>
+
+        <button class="analyze-btn" id="analyzeBtn" onclick="analyze()">
+          <span class="btn-text">Analyze Prompt</span>
+          <div class="spinner"></div>
+        </button>
+
+        <div class="error-box" id="errorBox"></div>
+
+        <!-- RESULTS -->
+        <div class="results" id="results">
+          <div class="results-top">
+            <div class="overall-grade">
+              <div class="grade-circle" id="gradeCircle"></div>
+              <div class="grade-info">
+                <div class="label">Overall health</div>
+                <div class="score" id="overallScore"></div>
+              </div>
+            </div>
+            <div class="model-tag" id="modelTag"></div>
+          </div>
+
+          <div class="scores-grid">
+            <div class="score-card">
+              <div class="score-card-header">
+                <span class="score-card-title">PII Risk</span>
+                <span class="score-card-value" id="piiScore"></span>
+              </div>
+              <div class="score-bar-bg"><div class="score-bar-fill" id="piiBar"></div></div>
+              <div class="score-detail" id="piiDetail"></div>
+              <div class="findings-row" id="piiFindings"></div>
+            </div>
+
+            <div class="score-card">
+              <div class="score-card-header">
+                <span class="score-card-title">Drift Potential</span>
+                <span class="score-card-value" id="driftScore"></span>
+              </div>
+              <div class="score-bar-bg"><div class="score-bar-fill" id="driftBar"></div></div>
+              <div class="score-detail" id="driftDetail"></div>
+            </div>
+
+            <div class="score-card">
+              <div class="score-card-header">
+                <span class="score-card-title">Token Cost</span>
+                <span class="score-card-value" id="tokenCost"></span>
+              </div>
+              <div class="score-bar-bg"><div class="score-bar-fill" id="tokenBar"></div></div>
+              <div class="score-detail" id="tokenDetail"></div>
+            </div>
+
+            <div class="score-card">
+              <div class="score-card-header">
+                <span class="score-card-title">Tone</span>
+                <span class="score-card-value" id="toneLabel"></span>
+              </div>
+              <div class="score-bar-bg"><div class="score-bar-fill" id="toneBar"></div></div>
+              <div class="score-detail" id="toneDetail"></div>
+            </div>
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-label">Summary</div>
+            <div class="summary-text" id="summaryText"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOW IT WORKS -->
+    <div class="section">
+      <div class="section-label">Under the hood</div>
+      <div class="section-title">How it works</div>
+      <div class="steps">
+        <div class="step-card">
+          <div class="step-num">01 —</div>
+          <div class="step-title">API Gateway</div>
+          <div class="step-desc">Receives your HTTPS request and routes it to the Lambda function</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">02 —</div>
+          <div class="step-title">AWS Lambda</div>
+          <div class="step-desc">Python 3.12 function validates and processes your prompt</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">03 —</div>
+          <div class="step-title">Amazon Bedrock</div>
+          <div class="step-desc">Nova Lite analyzes the prompt and scores all 4 dimensions</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">04 —</div>
+          <div class="step-title">Health Report</div>
+          <div class="step-desc">Structured JSON response returned in under 2 seconds</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCORES EXPLAINED -->
+    <div class="section" style="padding-top:0">
+      <div class="section-label">Scoring guide</div>
+      <div class="section-title">What each score means</div>
+      <div class="scores-legend">
+        <div class="legend-card">
+          <div class="legend-title">PII Risk (0–100)</div>
+          <div class="legend-desc">Detects emails, SSNs, credit cards, names. 0 = clean, 100 = highly sensitive data present</div>
+        </div>
+        <div class="legend-card">
+          <div class="legend-title">Drift Potential (0–100)</div>
+          <div class="legend-desc">Measures vagueness. High drift = inconsistent outputs every time the prompt is run</div>
+        </div>
+        <div class="legend-card">
+          <div class="legend-title">Token Cost</div>
+          <div class="legend-desc">Estimates token usage. At scale, expensive prompts add up fast</div>
+        </div>
+        <div class="legend-card">
+          <div class="legend-title">Tone</div>
+          <div class="legend-desc">Labels the prompt's tone. Aggressive or ambiguous prompts produce off-brand responses</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-text">
+      Built by <a href="https://github.com/arunachalesh58/ai-prompt-health-checker" target="_blank">Arunachalesh</a> · 
+      <a href="https://github.com/arunachalesh58/ai-prompt-health-checker" target="_blank">View on GitHub</a>
+    </div>
+    <div class="footer-stack">
+      <span class="stack-pill">AWS Lambda</span>
+      <span class="stack-pill">API Gateway</span>
+      <span class="stack-pill">Amazon Bedrock</span>
+      <span class="stack-pill">Nova Lite</span>
+      <span class="stack-pill">AWS Amplify</span>
+      <span class="stack-pill">Python 3.12</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+const API_URL = 'https://65o4g3sfo5.execute-api.us-east-1.amazonaws.com/prod/analyze';
+
+const PRESETS = {
+  clean: 'Summarize the key findings from the Q3 financial report and highlight areas of concern for the board of directors.',
+  pii: 'Send an email to john.smith@gmail.com with his SSN 123-45-6789 and credit card number 4111-1111-1111-1111.',
+  vague: 'Do something good.',
+  aggressive: 'You must immediately stop ignoring my requests and fix this broken system right now or there will be consequences.'
+};
+
+function setPrompt(type) {
+  document.getElementById('promptInput').value = PRESETS[type];
+}
+
+function getGradeColor(grade) {
+  const map = { A: '#22c55e', B: '#84cc16', C: '#f59e0b', D: '#f97316', F: '#ef4444' };
+  return map[grade] || '#7a7a8a';
+}
+
+function getBarColor(score) {
+  if (score >= 70) return '#ef4444';
+  if (score >= 40) return '#f59e0b';
+  return '#22c55e';
+}
+
+function getPiiBarColor(score) {
+  if (score >= 70) return '#ef4444';
+  if (score >= 30) return '#f59e0b';
+  return '#22c55e';
+}
+
+function getCostTierWidth(tier) {
+  const map = { cheap: 25, moderate: 60, expensive: 90 };
+  return map[tier] || 50;
+}
+
+function getCostColor(tier) {
+  const map = { cheap: '#22c55e', moderate: '#f59e0b', expensive: '#ef4444' };
+  return map[tier] || '#7a7a8a';
+}
+
+async function analyze() {
+  const prompt = document.getElementById('promptInput').value.trim();
+  if (!prompt) {
+    showError('Please enter a prompt to analyze.');
+    return;
+  }
+
+  const btn = document.getElementById('analyzeBtn');
+  const errorBox = document.getElementById('errorBox');
+  const results = document.getElementById('results');
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  errorBox.classList.remove('show');
+  results.classList.remove('show');
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      showError(data.error || 'API returned an error. Please try again.');
+      return;
+    }
+
+    renderResults(data);
+
+  } catch (err) {
+    showError('Could not connect to the API. Check your connection and try again.');
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  }
+}
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.classList.add('show');
+}
+
+function renderResults(data) {
+  const a = data.analysis;
+  const health = a.overall_health;
+  const grade = health.grade;
+  const gradeColor = getGradeColor(grade);
+
+  const gradeCircle = document.getElementById('gradeCircle');
+  gradeCircle.textContent = grade;
+  gradeCircle.style.color = gradeColor;
+  gradeCircle.style.borderColor = gradeColor;
+  gradeCircle.style.boxShadow = `0 0 16px ${gradeColor}40`;
+
+  document.getElementById('overallScore').textContent = health.score + ' / 100';
+  document.getElementById('overallScore').style.color = gradeColor;
+  document.getElementById('modelTag').textContent = data.model_used || 'amazon.nova-lite-v1:0';
+
+  const pii = a.pii_risk;
+  document.getElementById('piiScore').textContent = pii.score + '/100';
+  document.getElementById('piiScore').style.color = getPiiBarColor(pii.score);
+  document.getElementById('piiBar').style.width = pii.score + '%';
+  document.getElementById('piiBar').style.background = getPiiBarColor(pii.score);
+  document.getElementById('piiDetail').textContent = 'Level: ' + pii.level;
+  const findingsEl = document.getElementById('piiFindings');
+  findingsEl.innerHTML = '';
+  if (pii.findings && pii.findings.length > 0) {
+    pii.findings.forEach(f => {
+      const tag = document.createElement('span');
+      tag.className = 'finding-tag';
+      tag.textContent = f;
+      findingsEl.appendChild(tag);
+    });
+  }
+
+  const drift = a.drift_potential;
+  document.getElementById('driftScore').textContent = drift.score + '/100';
+  document.getElementById('driftScore').style.color = getBarColor(drift.score);
+  document.getElementById('driftBar').style.width = drift.score + '%';
+  document.getElementById('driftBar').style.background = getBarColor(drift.score);
+  document.getElementById('driftDetail').textContent = drift.reason || ('Level: ' + drift.level);
+
+  const token = a.token_cost;
+  const tierW = getCostTierWidth(token.cost_tier);
+  document.getElementById('tokenCost').textContent = token.cost_tier;
+  document.getElementById('tokenCost').style.color = getCostColor(token.cost_tier);
+  document.getElementById('tokenBar').style.width = tierW + '%';
+  document.getElementById('tokenBar').style.background = getCostColor(token.cost_tier);
+  document.getElementById('tokenDetail').textContent = '~' + token.estimated_tokens + ' tokens · ' + (token.note || '');
+
+  const tone = a.tone;
+  document.getElementById('toneLabel').textContent = tone.label;
+  document.getElementById('toneLabel').style.color = tone.label === 'aggressive' ? '#ef4444' : tone.label === 'professional' ? '#22c55e' : '#f59e0b';
+  document.getElementById('toneBar').style.width = tone.confidence + '%';
+  document.getElementById('toneBar').style.background = '#6c63ff';
+  document.getElementById('toneDetail').textContent = (tone.confidence || 0) + '% confidence · ' + (tone.note || '');
+
+  document.getElementById('summaryText').textContent = health.summary || '';
+
+  document.getElementById('results').classList.add('show');
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+</body>
+</html>
