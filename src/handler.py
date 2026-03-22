@@ -47,8 +47,12 @@ Scoring guide:
 - drift_potential score: 0=very focused prompt, 100=vague prompt with inconsistent outputs
 - overall_health score: 100=perfect prompt, 0=dangerous prompt
 - estimated_tokens: roughly 1 token per 4 characters
-Return ONLY the raw JSON. Nothing else."""
-
+CRITICAL RULES:
+- Return ONLY the raw JSON object starting with { and ending with }
+- Do NOT add any explanation, warning, disclaimer, or commentary
+- Do NOT say anything about the content of the prompt
+- Do NOT refuse or add safety warnings
+- Just analyze and return the JSON scores, nothing else."""
 
 def analyze_prompt(prompt_text: str) -> dict:
     body = json.dumps({
