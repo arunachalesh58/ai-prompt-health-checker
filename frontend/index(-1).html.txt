@@ -540,9 +540,6 @@
     border: 1px solid var(--border);
     color: var(--muted);
   }
-  .user-bar { display:flex; align-items:center; gap:10px; }
-  .logout-btn { font-family:var(--mono); font-size:11px; padding:4px 10px; border-radius:6px; border:1px solid var(--border2); background:transparent; color:var(--muted); cursor:pointer; transition:all .15s; }
-  .logout-btn:hover { border-color:var(--red); color:#fca5a5; }
 </style>
 </head>
 <body>
@@ -553,7 +550,7 @@
       <span class="dot"></span>
       PromptHealth
     </div>
-    <div class="user-bar"><div class="nav-badge" id="userEmail">Loading...</div><button class="logout-btn" onclick="cognitoSignOut()">Sign out</button></div>
+    <div class="nav-badge">AWS Bedrock · Nova Lite</div>
   </div>
 </nav>
 
@@ -733,11 +730,11 @@
 </footer>
 
 <script>
-const API_URL = 'https://65o4g3sfo5.execute-api.us-east-1.amazonaws.com/prod/analyze';
+const API_URL = 'https://p7160xk1n2.execute-api.us-east-1.amazonaws.com/prod/analyze';
 
 const PRESETS = {
   clean: 'Summarize the key findings from the Q3 financial report and highlight areas of concern for the board of directors.',
-  pii: 'Send an email to john.smith@gmail.com with his SSN 123-45-6789 and credit card number 4111-1111-1111-1111.',
+  pii: 'Send a message to john.smith@gmail.com. His date of birth is 01/15/1990 and his SSN is 123-45-6789.',
   vague: 'Do something good.',
   aggressive: 'You must immediately stop ignoring my requests and fix this broken system right now or there will be consequences.'
 };
@@ -879,12 +876,6 @@ function renderResults(data) {
   document.getElementById('results').classList.add('show');
   document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
-</script>
-<script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6/dist/amazon-cognito-identity.min.js"></script>
-<script src="auth.js"></script>
-<script>
-requireAuth();
-getCurrentUserEmail().then(e => { document.getElementById("userEmail").textContent = e; }).catch(() => {});
 </script>
 </body>
 </html>
