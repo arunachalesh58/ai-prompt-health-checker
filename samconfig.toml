@@ -5,7 +5,6 @@ version = 0.1
 [default.deploy.parameters]
 stack_name = "prompt-health-checker"
 s3_prefix = "prompt-health-checker"
-region = "us-east-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
 disable_rollback = false

@@ -30,7 +30,7 @@ Resources:
               Action:
                 - bedrock:InvokeModel
               Resource:
-                - !Sub "arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-text-lite-v1"
+                - !Sub "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0"
       Events:
         AnalyzePost:
           Type: Api
