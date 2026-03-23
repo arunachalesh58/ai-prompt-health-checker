@@ -734,7 +734,7 @@ const API_URL = 'https://p7160xk1n2.execute-api.us-east-1.amazonaws.com/prod/ana
 
 const PRESETS = {
   clean: 'Summarize the key findings from the Q3 financial report and highlight areas of concern for the board of directors.',
-  pii: 'Send a message to john.smith@gmail.com. His date of birth is 01/15/1990 and his SSN is 123-45-6789.',
+  pii: 'Send an email to john.smith@gmail.com with his SSN 123-45-6789 and credit card number 4111-1111-1111-1111.',
   vague: 'Do something good.',
   aggressive: 'You must immediately stop ignoring my requests and fix this broken system right now or there will be consequences.'
 };
