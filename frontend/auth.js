@@ -2,7 +2,7 @@
 // Replace these values after you create your Cognito User Pool
 const COGNITO_CONFIG = {
   UserPoolId: 'us-east-1_KsnEWpB4s',
-  ClientId: '1llv7bd5f6mpqfu0eqm2hn5p1h',
+  ClientId: 'aback8hsjoo7k7b8smqkhb33q',
   Domain: 'us-east-1ksnewpb4s.auth.us-east-1.amazoncognito.com',
   RedirectUri: window.location.origin + '/index.html'
 };
